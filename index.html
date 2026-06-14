@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="《摸鱼大师》实时联机桌游" />
+    <title>摸鱼大师</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">十二回合职场生存赛</p>
+        <h1>摸鱼大师</h1>
+        <p class="subtitle">2-4 人实时联机：业绩保底，摸鱼互坑，成长抱团。</p>
+      </div>
+      <button id="leave-room" class="secondary hidden">退出房间</button>
+    </header>
+
+    <main>
+      <section id="home-screen" class="home-grid">
+        <article class="welcome-card">
+          <p class="eyebrow">我是房主</p>
+          <h2>创建新房间</h2>
+          <p>创建后把四位房间码发给朋友，等大家到齐后由你开始游戏。</p>
+          <form id="create-form">
+            <label>你的名字<input name="name" maxlength="12" placeholder="例如：摸鱼一号" required /></label>
+            <button type="submit">创建房间</button>
+          </form>
+        </article>
+        <article class="welcome-card">
+          <p class="eyebrow">朋友已经开房</p>
+          <h2>加入房间</h2>
+          <form id="join-form">
+            <label>房间码<input name="code" maxlength="4" placeholder="ABCD" autocomplete="off" required /></label>
+            <label>你的名字<input name="name" maxlength="12" placeholder="例如：认真工作人" required /></label>
+            <button type="submit">加入房间</button>
+          </form>
+        </article>
+      </section>
+
+      <section id="lobby-screen" class="hidden">
+        <article class="lobby-card">
+          <p class="eyebrow">等待同事上线</p>
+          <h2>房间码</h2>
+          <button id="copy-code" class="room-code" title="点击复制"></button>
+          <p id="share-hint">把房间码和当前网址发给朋友。</p>
+          <div id="lobby-players" class="lobby-players"></div>
+          <button id="start-game">开始游戏</button>
+          <p id="owner-hint" class="muted"></p>
+        </article>
+      </section>
+
+      <section id="game-screen" class="hidden">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">办公室众生相</p><h2>玩家状态</h2></div>
+          <strong id="room-chip"></strong>
+        </div>
+        <div id="players" class="players"></div>
+
+        <section class="round-panel">
+          <div><span class="label">当前回合</span><strong id="round-label"></strong></div>
+          <div><span class="label">当前玩家</span><strong id="active-player"></strong></div>
+          <p id="turn-hint"></p>
+          <button id="end-turn">不买了 / 结束行动</button>
+        </section>
+
+        <section id="risk-panel" class="risk-panel hidden"></section>
+
+        <section>
+          <div class="section-heading">
+            <div><p class="eyebrow">茶水间人才市场</p><h2>选择一张卡</h2></div>
+            <p>每列展示 2 张；只有当前玩家可以购买。</p>
+          </div>
+          <div id="market" class="market"></div>
+        </section>
+
+        <section class="lower-grid">
+          <article class="panel"><div class="section-heading compact"><h2>本局记录</h2></div><ol id="log" class="log"></ol></article>
+          <article class="panel">
+            <div class="section-heading compact"><h2>计分提醒</h2></div>
+            <ul class="rules-summary">
+              <li><b>工作：</b>目标 12；达标 9 分；每超额 2 业绩再得 1 分。</li>
+              <li><b>摸鱼：</b>全员业绩 -1；其他玩家依次投票选择风险牌。</li>
+              <li><b>提升：</b>五类分别收集；每类有 n 张便得 n² 分。</li>
+            </ul>
+          </article>
+        </section>
+      </section>
+
+      <section id="result-screen" class="hidden"><article id="result" class="lobby-card"></article></section>
+      <p id="notice" class="notice hidden" role="status"></p>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

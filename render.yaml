@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: moyu-master
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
