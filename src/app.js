@@ -48,7 +48,10 @@ function request(event, payload = {}) {
 
 async function roomRequest(event, payload = {}) {
   if (!identity) throw new Error("尚未加入房间");
-  return request(event, { ...payload, ...identity });
+  const turnPayload = event.startsWith("game:") || event.startsWith("risk:")
+    ? { turnId: state?.game?.turnId }
+    : {};
+  return request(event, { ...payload, ...turnPayload, ...identity });
 }
 
 function showScreen(id) {
@@ -79,11 +82,16 @@ function renderLobby() {
 }
 
 function renderPlayers() {
-  elements.players.innerHTML = state.players.map((player, index) => `
+  elements.players.innerHTML = state.players.map((player, index) => {
+    const hasActed = state.game.actedPlayerIndexes.includes(index);
+    const turnStatus = !player.connected ? "离线等待"
+      : index === state.game.activePlayerIndex ? "行动中"
+        : hasActed ? "本轮完成" : "等待行动";
+    return `
     <article class="player-board ${index === state.game.activePlayerIndex ? "active" : ""} ${index === state.viewerIndex ? "self" : ""}">
       <div class="player-title">
         <h3>${escapeHtml(player.name)}${index === state.viewerIndex ? "（你）" : ""}</h3>
-        <span>${player.connected ? "在线" : "离线"}</span>
+        <span class="player-turn-status">${turnStatus}</span>
       </div>
       <div class="player-stats">
         <span>精力 <b>${player.energy}/${state.config.energyCap}</b></span>
@@ -93,7 +101,8 @@ function renderPlayers() {
       </div>
       <p class="growth-line">${growthSummary(player)}</p>
     </article>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function renderRisk() {
@@ -124,6 +133,8 @@ function renderRisk() {
 function renderMarket() {
   const isActive = state.viewerIndex === state.game.activePlayerIndex;
   const player = state.players[state.viewerIndex];
+  const isAction = state.game.turnPhase === "action";
+  const isDiscard = state.game.turnPhase === "discard" && !state.game.pendingRisk;
   elements.market.innerHTML = Object.entries(state.game.market).map(([type, cards]) => `
     <div class="lane"><h3 class="lane-title ${type}">${typeNames[type]}</h3>
       ${cards.map((card, index) => `
@@ -131,7 +142,11 @@ function renderMarket() {
           <div class="card-top"><h3>${escapeHtml(card.title)}</h3><span class="cost">${card.cost} 精力</span></div>
           ${card.growthLabel ? `<span class="growth-tag">${escapeHtml(card.growthLabel)}</span>` : ""}
           <p class="flavor">${escapeHtml(card.flavor)}</p><p class="effect">${escapeHtml(card.text)}</p>
-          <button data-buy-type="${type}" data-buy-index="${index}" ${!isActive || state.game.turnComplete || state.game.pendingRisk || player.energy < card.cost ? "disabled" : ""}>购买</button>
+          ${isDiscard ? `
+            <button class="discard-button" data-discard-type="${type}" data-discard-index="${index}" ${!isActive ? "disabled" : ""}>弃掉并结束回合</button>
+          ` : `
+            <button data-buy-type="${type}" data-buy-index="${index}" ${!isActive || !isAction || state.game.pendingRisk || player.energy < card.cost ? "disabled" : ""}>购买</button>
+          `}
         </article>`).join("")}
     </div>`).join("");
 }
@@ -143,11 +158,14 @@ function renderGame() {
   elements["room-chip"].textContent = `房间 ${state.code}`;
   elements["round-label"].textContent = `${state.game.round} / ${state.config.totalRounds}`;
   elements["active-player"].textContent = active.name;
+  const activeOffline = !active.connected;
   elements["turn-hint"].textContent = state.game.pendingRisk ? "先完成风险投票。"
-    : myTurn ? state.game.turnComplete ? "你已买牌，请结束行动。" : "轮到你了：买一张牌或直接结束。"
-      : `等待 ${active.name} 行动。`;
-  elements["end-turn"].disabled = !myTurn || Boolean(state.game.pendingRisk);
-  elements["end-turn"].textContent = state.game.turnComplete ? "结束行动" : "不买了 / 结束行动";
+    : activeOffline ? `${active.name} 已掉线，回合会保留，等待其重连。`
+      : myTurn ? state.game.turnPhase === "discard" ? "必须弃掉市场上一张牌，弃牌后自动轮到下一人。" : "轮到你了：购买一张牌，或放弃购买。"
+        : `等待 ${active.name} 完成${state.game.turnPhase === "discard" ? "弃牌" : "行动"}。`;
+  elements["end-turn"].disabled = !myTurn || Boolean(state.game.pendingRisk) || state.game.turnPhase !== "action";
+  elements["end-turn"].classList.toggle("hidden", state.game.turnPhase !== "action");
+  elements["end-turn"].textContent = "不买牌，进入弃牌";
   renderPlayers();
   renderRisk();
   renderMarket();
@@ -206,10 +224,12 @@ elements["join-form"].addEventListener("submit", async (event) => {
 });
 
 elements["start-game"].addEventListener("click", () => roomRequest("room:start").catch((error) => showNotice(error.message, true)));
-elements["end-turn"].addEventListener("click", () => roomRequest("game:end-turn").catch((error) => showNotice(error.message, true)));
+elements["end-turn"].addEventListener("click", () => roomRequest("game:pass").catch((error) => showNotice(error.message, true)));
 elements.market.addEventListener("click", (event) => {
   const button = event.target.closest("[data-buy-type]");
   if (button) roomRequest("game:buy", { type: button.dataset.buyType, index: Number(button.dataset.buyIndex) }).catch((error) => showNotice(error.message, true));
+  const discardButton = event.target.closest("[data-discard-type]");
+  if (discardButton) roomRequest("game:discard", { type: discardButton.dataset.discardType, index: Number(discardButton.dataset.discardIndex) }).catch((error) => showNotice(error.message, true));
 });
 elements["risk-panel"].addEventListener("click", (event) => {
   const button = event.target.closest("[data-risk-id]");

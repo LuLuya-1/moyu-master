@@ -60,6 +60,10 @@ export function createServer() {
     const roomAction = (event, operation) => {
       socket.on(event, action((payload) => {
         const room = rooms.getRoom(payload.code);
+        if (event.startsWith("game:") || event.startsWith("risk:")) {
+          rooms.requirePlaying(room);
+          rooms.requireCurrentTurn(room, payload.turnId);
+        }
         operation(room, payload.token, payload);
         sendState(room);
         return {};
@@ -68,7 +72,8 @@ export function createServer() {
 
     roomAction("room:start", (room, token) => rooms.startGame(room, token));
     roomAction("game:buy", (room, token, payload) => rooms.buy(room, token, payload.type, payload.index));
-    roomAction("game:end-turn", (room, token) => rooms.finishTurn(room, token));
+    roomAction("game:pass", (room, token) => rooms.pass(room, token));
+    roomAction("game:discard", (room, token, payload) => rooms.discard(room, token, payload.type, payload.index));
     roomAction("risk:vote", (room, token, payload) => rooms.vote(room, token, payload.cardId));
     roomAction("risk:choose", (room, token, payload) => rooms.chooseRisk(room, token, payload.cardId));
 

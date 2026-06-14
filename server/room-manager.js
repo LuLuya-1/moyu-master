@@ -4,8 +4,9 @@ import {
   castRiskVote,
   chooseRiskCard,
   createGame,
-  endTurn,
+  discardMarketCard,
   getActivePlayer,
+  passAction,
   scoreGame,
 } from "../src/engine.js";
 import { CONFIG } from "../src/data.js";
@@ -111,9 +112,15 @@ export class RoomManager {
     return room;
   }
 
-  finishTurn(room, token) {
+  pass(room, token) {
     this.requireActivePlayer(room, token);
-    const result = endTurn(room.game);
+    passAction(room.game);
+    return room;
+  }
+
+  discard(room, token, type, index) {
+    this.requireActivePlayer(room, token);
+    const result = discardMarketCard(room.game, type, Number(index));
     if (result) room.phase = "finished";
     return room;
   }
@@ -167,6 +174,12 @@ export class RoomManager {
     if (index !== room.game.activePlayerIndex) throw new Error(`现在轮到 ${getActivePlayer(room.game).name}`);
   }
 
+  requireCurrentTurn(room, expectedTurnId) {
+    if (Number(expectedTurnId) !== room.game.turnId) {
+      throw new Error("这个操作来自旧回合，页面将自动同步最新状态");
+    }
+  }
+
   publicState(room, token) {
     const viewerIndex = room.members.findIndex((member) => member.token === token);
     const game = room.game;
@@ -181,9 +194,11 @@ export class RoomManager {
       players: room.members.map((member, index) => publicPlayer(member, index, game?.players[index])),
       game: game ? {
         round: game.round,
+        turnId: game.turnId,
         activePlayerIndex: game.activePlayerIndex,
         startingPlayerIndex: game.startingPlayerIndex,
-        turnComplete: game.turnComplete,
+        actedPlayerIndexes: game.actedPlayerIndexes,
+        turnPhase: game.turnPhase,
         market: game.market,
         log: game.log,
         pendingRisk: pending ? {

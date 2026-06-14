@@ -5,6 +5,7 @@ import {
   castRiskVote,
   chooseRiskCard,
   createGame,
+  discardMarketCard,
   endTurn,
   growthScore,
   scoreGame,
@@ -32,7 +33,7 @@ test("turns advance through every player and rotate the next starting player", (
   assert.equal(game.activePlayerIndex, 1);
 });
 
-test("buying a card completes only the active player's turn", () => {
+test("buying moves the active player into mandatory discard without advancing", () => {
   const game = createGame(["甲", "乙"], 12);
   const card = game.market.work[0];
   const before = game.players[0].energy;
@@ -40,8 +41,12 @@ test("buying a card completes only the active player's turn", () => {
   assert.equal(game.players[0].energy, Math.min(5, before - card.cost + (card.energy ?? 0)));
   assert.equal(game.players[0].cards.length, 1);
   assert.equal(game.market.work.length, 2);
-  assert.equal(game.turnComplete, true);
-  assert.throws(() => buyCard(game, "work", 0), /行动已经完成/);
+  assert.equal(game.turnPhase, "discard");
+  assert.equal(game.activePlayerIndex, 0);
+  assert.throws(() => buyCard(game, "work", 0), /购买阶段/);
+  discardMarketCard(game, "work", 0);
+  assert.equal(game.activePlayerIndex, 1);
+  assert.equal(game.turnPhase, "action");
 });
 
 test("fishing reduces everyone's performance and starts one-card-per-risk voting", () => {
@@ -75,6 +80,16 @@ test("growth scores each category as n squared", () => {
   const game = createGame(["甲", "乙"], 9);
   game.players[0].growthCounts = { skill: 3, efficiency: 2, network: 1, health: 0, vision: 0 };
   assert.equal(growthScore(game.players[0]), 14);
+});
+
+test("discarded market cards are reshuffled when a category deck is empty", () => {
+  const game = createGame(["甲", "乙"], 91);
+  game.turnPhase = "discard";
+  game.decks.work = [];
+  game.marketDiscard.work = [{ id: "recycle", type: "work", title: "重洗卡", cost: 1, text: "测试" }];
+  discardMarketCard(game, "work", 0);
+  assert.equal(game.market.work.length, 2);
+  assert.ok(game.market.work.some((card) => card.id === "recycle"));
 });
 
 test("work scoring follows the 12 target and one point per two surplus", () => {

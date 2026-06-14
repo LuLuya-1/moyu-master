@@ -18,8 +18,10 @@ test("only the owner can start and only the active player can act", () => {
   assert.throws(() => manager.startGame(owner.room, guest.token), /房主/);
   manager.startGame(owner.room, owner.token);
   assert.equal(owner.room.phase, "playing");
-  assert.throws(() => manager.finishTurn(owner.room, guest.token), /轮到/);
-  manager.finishTurn(owner.room, owner.token);
+  assert.throws(() => manager.pass(owner.room, guest.token), /轮到/);
+  manager.pass(owner.room, owner.token);
+  assert.equal(owner.room.game.activePlayerIndex, 0);
+  manager.discard(owner.room, owner.token, "work", 0);
   assert.equal(owner.room.game.activePlayerIndex, 1);
 });
 
@@ -43,4 +45,20 @@ test("a disconnected player can resume with the original token", () => {
   manager.resumeRoom(owner.room.code, owner.token, "socket-new");
   assert.equal(owner.room.members[0].connected, true);
   assert.equal(owner.room.members[0].socketId, "socket-new");
+});
+
+test("disconnecting the active player never advances or skips their turn", () => {
+  const manager = new RoomManager();
+  const owner = manager.createRoom("甲", "socket-a");
+  const guest = manager.joinRoom(owner.room.code, "乙", "socket-b");
+  manager.startGame(owner.room, owner.token);
+  manager.pass(owner.room, owner.token);
+  manager.discard(owner.room, owner.token, "work", 0);
+  const turnId = owner.room.game.turnId;
+  manager.disconnect("socket-b");
+  assert.equal(owner.room.game.activePlayerIndex, 1);
+  assert.equal(owner.room.game.turnId, turnId);
+  assert.equal(owner.room.members[1].connected, false);
+  manager.resumeRoom(owner.room.code, guest.token, "socket-new");
+  assert.equal(owner.room.game.activePlayerIndex, 1);
 });

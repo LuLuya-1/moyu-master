@@ -42,14 +42,16 @@ export function createGame(names = ["玩家 1", "玩家 2"], seed = Date.now()) 
 
   return {
     round: 1,
+    turnId: 1,
     startingPlayerIndex: 0,
     activePlayerIndex: 0,
     actedPlayerIndexes: [],
-    turnComplete: false,
+    turnPhase: "action",
     finished: false,
     players: names.map((name, index) => createPlayer(name.trim() || `玩家 ${index + 1}`)),
     decks,
     market,
+    marketDiscard: { work: [], fish: [], growth: [] },
     riskDeck: shuffle(RISK_CARDS, random),
     riskDiscard: [],
     pendingRisk: null,
@@ -62,8 +64,19 @@ export function getActivePlayer(game) {
   return game.players[game.activePlayerIndex];
 }
 
-function refillLane(market, decks, type) {
-  while (market[type].length < CONFIG.cardsPerLane && decks[type].length) {
+function refillLane(gameOrMarket, decksOrType, maybeType) {
+  const legacyCall = maybeType != null;
+  const game = legacyCall ? null : gameOrMarket;
+  const market = legacyCall ? gameOrMarket : game.market;
+  const decks = legacyCall ? decksOrType : game.decks;
+  const type = legacyCall ? maybeType : decksOrType;
+  while (market[type].length < CONFIG.cardsPerLane) {
+    if (!decks[type].length && game?.marketDiscard[type].length) {
+      decks[type] = shuffle(game.marketDiscard[type], game.random);
+      game.marketDiscard[type] = [];
+      game.log.unshift(`${type === "work" ? "工作" : type === "fish" ? "摸鱼" : "自我提升"}弃牌堆已重新洗入牌库。`);
+    }
+    if (!decks[type].length) break;
     market[type].push(decks[type].pop());
   }
 }
@@ -142,7 +155,7 @@ export function chooseRiskCard(game, cardId) {
 export function buyCard(game, type, index) {
   if (game.finished) throw new Error("游戏已经结束");
   if (game.pendingRisk) throw new Error("请先完成风险投票");
-  if (game.turnComplete) throw new Error("本回合行动已经完成");
+  if (game.turnPhase !== "action") throw new Error("当前不是购买阶段");
   const card = game.market[type]?.[index];
   const player = getActivePlayer(game);
   if (!card) throw new Error("卡牌不存在");
@@ -153,8 +166,8 @@ export function buyCard(game, type, index) {
   if (card.type === "growth") player.growthCounts[card.growthType] += 1;
   player.cards.push(card);
   game.market[type].splice(index, 1);
-  refillLane(game.market, game.decks, type);
-  game.turnComplete = true;
+  refillLane(game, type);
+  game.turnPhase = "discard";
   game.log.unshift(`${player.name} 购买「${card.title}」：${card.text}。`);
 
   let risk = null;
@@ -168,7 +181,15 @@ export function buyCard(game, type, index) {
   return { card, risk };
 }
 
-export function endTurn(game) {
+export function passAction(game) {
+  if (game.finished) throw new Error("游戏已经结束");
+  if (game.pendingRisk) throw new Error("请先完成风险投票");
+  if (game.turnPhase !== "action") throw new Error("当前不是购买阶段");
+  game.turnPhase = "discard";
+  game.log.unshift(`${getActivePlayer(game).name} 放弃购买，进入市场弃牌阶段。`);
+}
+
+function advanceTurn(game) {
   if (game.finished) return scoreGame(game);
   if (game.pendingRisk) throw new Error("请先完成风险投票");
 
@@ -179,7 +200,8 @@ export function endTurn(game) {
     do {
       game.activePlayerIndex = (game.activePlayerIndex + 1) % game.players.length;
     } while (game.actedPlayerIndexes.includes(game.activePlayerIndex));
-    game.turnComplete = false;
+    game.turnId += 1;
+    game.turnPhase = "action";
     game.log.unshift(`轮到 ${getActivePlayer(game).name} 行动。`);
     return null;
   }
@@ -193,12 +215,34 @@ export function endTurn(game) {
   game.startingPlayerIndex = (game.startingPlayerIndex + 1) % game.players.length;
   game.activePlayerIndex = game.startingPlayerIndex;
   game.actedPlayerIndexes = [];
-  game.turnComplete = false;
+  game.turnId += 1;
+  game.turnPhase = "action";
   for (const player of game.players) {
     player.energy = Math.min(CONFIG.energyCap, player.energy + CONFIG.energyPerRound);
   }
   game.log.unshift(`第 ${game.round} 回合开始：所有玩家领取 ${CONFIG.energyPerRound} 精力，${getActivePlayer(game).name} 先行动。`);
   return null;
+}
+
+export function discardMarketCard(game, type, index) {
+  if (game.finished) throw new Error("游戏已经结束");
+  if (game.pendingRisk) throw new Error("请先完成风险投票");
+  if (game.turnPhase !== "discard") throw new Error("购买或放弃购买后才能弃牌");
+  const card = game.market[type]?.[index];
+  if (!card) throw new Error("卡牌不存在");
+  game.market[type].splice(index, 1);
+  game.marketDiscard[type].push(card);
+  game.log.unshift(`${getActivePlayer(game).name} 将市场中的「${card.title}」弃掉。`);
+  refillLane(game, type);
+  return advanceTurn(game);
+}
+
+// Kept for engine-level simulations. Normal online play advances only by discarding.
+export function endTurn(game) {
+  if (game.turnPhase === "action") passAction(game);
+  const firstLane = Object.entries(game.market).find(([, cards]) => cards.length);
+  if (!firstLane) throw new Error("市场没有可弃掉的卡牌");
+  return discardMarketCard(game, firstLane[0], 0);
 }
 
 export function workScore(performance) {

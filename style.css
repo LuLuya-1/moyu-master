@@ -67,6 +67,7 @@ h2 { margin-bottom: 0; font-size: 1.35rem; }
 .player-board.self { background: #fff9e9; }
 .player-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .player-title h3 { margin: 0; }
+.player-turn-status { color: #746e63; font-size: .72rem; font-weight: 700; }
 .turn-badge, .growth-tag { display: inline-block; padding: 3px 7px; border-radius: 99px; color: #634a0c; background: #f6dda0; font-size: .72rem; font-weight: 800; }
 .player-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 14px; }
 .player-stats span { color: #716b60; font-size: .78rem; }
@@ -102,6 +103,7 @@ h2 { margin-bottom: 0; font-size: 1.35rem; }
 .card.work button { background: var(--work); }
 .card.fish button { background: var(--fish); }
 .card.growth button { background: var(--growth); }
+.card button.discard-button { color: var(--ink); border: 1px solid var(--fish); background: #ffe5d9; }
 
 .lower-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; margin: 40px 0 64px; }
 .panel { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 253, 247, .78); }

@@ -51,14 +51,21 @@ test("two socket clients create, join, start, and share turns", async (context) 
   const ownerStarted = nextState(owner, (state) => state.phase === "playing");
   const guestStarted = nextState(guest, (state) => state.phase === "playing");
   assert.equal((await emit(owner, "room:start", { code: created.code, token: created.token })).ok, true);
-  await Promise.all([ownerStarted, guestStarted]);
+  const [ownerState] = await Promise.all([ownerStarted, guestStarted]);
+  const turnId = ownerState.game.turnId;
 
-  const rejected = await emit(guest, "game:end-turn", { code: created.code, token: joined.token });
+  const rejected = await emit(guest, "game:pass", { code: created.code, token: joined.token, turnId });
   assert.equal(rejected.ok, false);
   assert.match(rejected.error, /轮到/);
 
+  assert.equal((await emit(owner, "game:pass", { code: created.code, token: created.token, turnId })).ok, true);
   const guestTurn = nextState(guest, (state) => state.game?.activePlayerIndex === 1);
-  assert.equal((await emit(owner, "game:end-turn", { code: created.code, token: created.token })).ok, true);
+  assert.equal((await emit(owner, "game:discard", { code: created.code, token: created.token, turnId, type: "work", index: 0 })).ok, true);
   const synced = await guestTurn;
   assert.equal(synced.players[1].name, "乙");
+  assert.equal(synced.game.turnId, turnId + 1);
+
+  const stale = await emit(owner, "game:pass", { code: created.code, token: created.token, turnId });
+  assert.equal(stale.ok, false);
+  assert.match(stale.error, /旧回合/);
 });
