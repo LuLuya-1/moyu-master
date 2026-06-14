@@ -1,4 +1,4 @@
-import { CARDS, CONFIG, GROWTH_TYPES, RISK_CARDS } from "./data.js";
+import { buildCards, buildRiskCards, CONFIG, GROWTH_TYPES } from "./data.js";
 
 export function seededRandom(seed = Date.now()) {
   let state = seed >>> 0;
@@ -34,8 +34,9 @@ export function createGame(names = ["玩家 1", "玩家 2"], seed = Date.now()) 
     throw new Error(`玩家人数必须为 ${CONFIG.minPlayers}-${CONFIG.maxPlayers} 人`);
   }
   const random = seededRandom(seed);
+  const cards = buildCards(names.length);
   const decks = Object.fromEntries(
-    ["work", "fish", "growth"].map((type) => [type, shuffle(CARDS.filter((card) => card.type === type), random)]),
+    ["work", "fish", "growth"].map((type) => [type, shuffle(cards.filter((card) => card.type === type), random)]),
   );
   const market = { work: [], fish: [], growth: [] };
   for (const type of Object.keys(market)) refillLane(market, decks, type);
@@ -52,7 +53,7 @@ export function createGame(names = ["玩家 1", "玩家 2"], seed = Date.now()) 
     decks,
     market,
     marketDiscard: { work: [], fish: [], growth: [] },
-    riskDeck: shuffle(RISK_CARDS, random),
+    riskDeck: shuffle(buildRiskCards(names.length), random),
     riskDiscard: [],
     pendingRisk: null,
     random,

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { buildCards, buildRiskCards } from "../src/data.js";
 import {
   buyCard,
   castRiskVote,
@@ -19,6 +20,29 @@ test("game creates 2-4 players with a shared market", () => {
   assert.equal(game.activePlayerIndex, 0);
   assert.deepEqual(Object.values(game.market).map((lane) => lane.length), [2, 2, 2]);
   assert.throws(() => createGame(["孤独玩家"]), /2-4/);
+});
+
+test("card quantities scale with player count while each growth card has two copies", () => {
+  for (const playerCount of [2, 3, 4]) {
+    const cards = buildCards(playerCount);
+    assert.equal(cards.filter((card) => card.type === "work").length, 12 * playerCount);
+    assert.equal(cards.filter((card) => card.type === "fish").length, 12 * playerCount);
+    assert.equal(cards.filter((card) => card.type === "growth").length, 24);
+    const titleCounts = Object.groupBy(cards, (card) => card.title);
+    assert.ok(Object.values(titleCounts).filter((group) => group[0].type === "growth").every((group) => group.length === 2));
+  }
+});
+
+test("risk card quantities follow player-scaled and fixed counts", () => {
+  const risks = buildRiskCards(3);
+  const count = (title) => risks.filter((card) => card.title === title).length;
+  assert.equal(count("老板没看见"), 12);
+  assert.equal(count("同事帮忙打掩护"), 9);
+  assert.equal(count("消息撤回及时"), 6);
+  assert.equal(count("突然被 @"), 3);
+  assert.equal(count("会议临时取消"), 5);
+  assert.equal(count("屏幕共享事故"), 5);
+  assert.equal(risks.length, 64);
 });
 
 test("turns advance through every player and rotate the next starting player", () => {
@@ -78,7 +102,7 @@ test("other players vote and the active player chooses among tied winners", () =
 
 test("growth scores each category as n squared", () => {
   const game = createGame(["甲", "乙"], 9);
-  game.players[0].growthCounts = { skill: 3, efficiency: 2, network: 1, health: 0, vision: 0 };
+  game.players[0].growthCounts = { skill: 3, network: 2, health: 1, vision: 0 };
   assert.equal(growthScore(game.players[0]), 14);
 });
 
@@ -89,7 +113,7 @@ test("discarded market cards are reshuffled when a category deck is empty", () =
   game.marketDiscard.work = [{ id: "recycle", type: "work", title: "重洗卡", cost: 1, text: "测试" }];
   discardMarketCard(game, "work", 0);
   assert.equal(game.market.work.length, 2);
-  assert.ok(game.market.work.some((card) => card.id === "recycle"));
+  assert.ok([...game.market.work, ...game.decks.work].some((card) => card.id === "recycle"));
 });
 
 test("work scoring follows the 12 target and one point per two surplus", () => {
