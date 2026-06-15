@@ -248,10 +248,10 @@ export function endTurn(game) {
 
 export function workScore(performance) {
   if (performance < CONFIG.performanceTarget) {
-    return { score: -2 * (CONFIG.performanceTarget - performance), label: `未达标，差 ${CONFIG.performanceTarget - performance} 业绩` };
+    return { score: -(CONFIG.performanceTarget - performance), label: `未达标，差 ${CONFIG.performanceTarget - performance} 业绩` };
   }
   const excess = performance - CONFIG.performanceTarget;
-  return { score: 9 + Math.floor(excess / 2), label: `达标，超额 ${excess} 业绩` };
+  return { score: 7 + Math.floor(excess / 2), label: `达标，超额 ${excess} 业绩` };
 }
 
 export function growthScore(player) {

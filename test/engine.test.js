@@ -22,27 +22,29 @@ test("game creates 2-4 players with a shared market", () => {
   assert.throws(() => createGame(["孤独玩家"]), /2-4/);
 });
 
-test("card quantities scale with player count while each growth card has two copies", () => {
+test("work and fish use 2x copies while each growth card has three copies", () => {
   for (const playerCount of [2, 3, 4]) {
     const cards = buildCards(playerCount);
-    assert.equal(cards.filter((card) => card.type === "work").length, 12 * playerCount);
-    assert.equal(cards.filter((card) => card.type === "fish").length, 12 * playerCount);
-    assert.equal(cards.filter((card) => card.type === "growth").length, 24);
+    assert.equal(cards.filter((card) => card.type === "work").length, 24 * playerCount);
+    assert.equal(cards.filter((card) => card.type === "fish").length, 24 * playerCount);
+    assert.equal(cards.filter((card) => card.type === "growth").length, 36);
     const titleCounts = Object.groupBy(cards, (card) => card.title);
-    assert.ok(Object.values(titleCounts).filter((group) => group[0].type === "growth").every((group) => group.length === 2));
+    assert.ok(Object.values(titleCounts).filter((group) => group[0].type === "growth").every((group) => group.length === 3));
   }
 });
 
 test("risk card quantities follow player-scaled and fixed counts", () => {
   const risks = buildRiskCards(3);
   const count = (title) => risks.filter((card) => card.title === title).length;
-  assert.equal(count("老板没看见"), 12);
+  assert.equal(count("老板没看见"), 9);
   assert.equal(count("同事帮忙打掩护"), 9);
   assert.equal(count("消息撤回及时"), 6);
-  assert.equal(count("突然被 @"), 3);
   assert.equal(count("会议临时取消"), 5);
+  assert.equal(count("摄像头亮了"), 3);
+  assert.equal(count("摸鱼实锤"), 3);
   assert.equal(count("屏幕共享事故"), 5);
-  assert.equal(risks.length, 64);
+  assert.equal(count("完美切屏"), 5);
+  assert.equal(risks.length, 56);
 });
 
 test("turns advance through every player and rotate the next starting player", () => {
@@ -116,12 +118,13 @@ test("discarded market cards are reshuffled when a category deck is empty", () =
   assert.ok([...game.market.work, ...game.decks.work].some((card) => card.id === "recycle"));
 });
 
-test("work scoring follows the 12 target and one point per two surplus", () => {
-  assert.equal(workScore(10).score, -4);
-  assert.equal(workScore(12).score, 9);
-  assert.equal(workScore(13).score, 9);
-  assert.equal(workScore(14).score, 10);
-  assert.equal(workScore(18).score, 12);
+test("work scoring follows the 10 target and one point per two surplus", () => {
+  assert.equal(workScore(8).score, -2);
+  assert.equal(workScore(9).score, -1);
+  assert.equal(workScore(10).score, 7);
+  assert.equal(workScore(11).score, 7);
+  assert.equal(workScore(12).score, 8);
+  assert.equal(workScore(18).score, 11);
 });
 
 test("a two-player game ends after both players act in round 12", () => {

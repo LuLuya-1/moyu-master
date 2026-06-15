@@ -5,7 +5,7 @@ export const CONFIG = {
   startingEnergy: 2,
   energyPerRound: 1,
   energyCap: 5,
-  performanceTarget: 12,
+  performanceTarget: 10,
   cardsPerLane: 2,
 };
 
@@ -48,7 +48,7 @@ const GROWTH_CARDS = [
   { id: "gn3", type: "growth", growthType: "network", growthLabel: "人脉", title: "供应商朋友", cost: 2, performance: 1, suspicion: -1, text: "人脉；+1 业绩，风险值 -1", flavor: "关系到位，附件随后补。" },
   { id: "gh1", type: "growth", growthType: "health", growthLabel: "健康", title: "工位拉伸", cost: 1, points: 1, text: "健康；+1 分", flavor: "动作不标准，态度很养生。" },
   { id: "gh2", type: "growth", growthType: "health", growthLabel: "健康", title: "规律午餐", cost: 2, energy: 1, text: "健康；返还 1 精力", flavor: "先保证胃，再保证交付。" },
-  { id: "gh3", type: "growth", growthType: "health", growthLabel: "健康", title: "拒绝熬夜", cost: 2, points: 1, text: "健康；+1 分", flavor: "今天没做完的事，明天仍然没做完。" },
+  { id: "gh3", type: "growth", growthType: "health", growthLabel: "健康", title: "拒绝熬夜", cost: 2, energy: 1, text: "健康；返还 1 精力", flavor: "今天没做完的事，明天仍然没做完。" },
   { id: "gv1", type: "growth", growthType: "vision", growthLabel: "视野", title: "行业阅读", cost: 1, performance: 1, text: "视野；+1 业绩", flavor: "标题看完，趋势掌握。" },
   { id: "gv2", type: "growth", growthType: "vision", growthLabel: "视野", title: "竞品体验", cost: 1, points: 1, text: "视野；+1 分", flavor: "研究别人怎么让人加班。" },
   { id: "gv3", type: "growth", growthType: "vision", growthLabel: "视野", title: "外部分享会", cost: 2, performance: 1, points: 1, text: "视野；+1 业绩，+1 分", flavor: "换个会议室，观点就更有远见。" },
@@ -63,9 +63,9 @@ function copies(cards, count) {
 
 export function buildCards(playerCount) {
   return [
-    ...copies(WORK_CARDS, playerCount),
-    ...copies(FISH_CARDS, playerCount),
-    ...copies(GROWTH_CARDS, 2),
+    ...copies(WORK_CARDS, 2 * playerCount),
+    ...copies(FISH_CARDS, 2 * playerCount),
+    ...copies(GROWTH_CARDS, 3),
   ];
 }
 
@@ -77,27 +77,25 @@ export const GROWTH_TYPES = [
 ];
 
 const BASE_RISK_CARDS = [
-  { id: "r1", title: "老板没看见", text: "平安无事。", effect: {} },
+  { id: "r1", title: "老板没看见", text: "精力 +1。", effect: { energy: 1 } },
   { id: "r2", title: "同事帮忙打掩护", text: "风险值 -1。", effect: { suspicion: -1 } },
   { id: "r3", title: "消息撤回及时", text: "平安无事。", effect: {} },
   { id: "r4", title: "会议临时取消", text: "+1 分。", effect: { points: 1 } },
-  { id: "r5", title: "突然被 @", text: "失去 1 精力。", effect: { energy: -1 } },
-  { id: "r6", title: "摄像头亮了", text: "失去 2 分。", effect: { points: -2 } },
-  { id: "r7", title: "老板经过", text: "失去 3 分，风险值降至 2。", effect: { points: -3, suspicionCap: 2 } },
-  { id: "r8", title: "临时汇报", text: "业绩 -1，失去 2 分。", effect: { performance: -1, points: -2 } },
-  { id: "r9", title: "摸鱼实锤", text: "失去 4 分，风险值清零。", effect: { points: -4, suspicionReset: true } },
-  { id: "r10", title: "屏幕共享事故", text: "失去 4 分。", effect: { points: -4 } },
-  { id: "r11", title: "工位突击检查", text: "业绩 -1，风险值清零。", effect: { performance: -1, suspicionReset: true } },
-  { id: "r12", title: "完美切屏", text: "+1 业绩。", effect: { performance: 1 } },
+  { id: "r5", title: "摄像头亮了", text: "失去 2 分。", effect: { points: -2 } },
+  { id: "r6", title: "老板经过", text: "失去 3 分，风险值降至 2。", effect: { points: -3, suspicionCap: 2 } },
+  { id: "r7", title: "临时汇报", text: "业绩 -1，失去 2 分。", effect: { performance: -1, points: -2 } },
+  { id: "r8", title: "摸鱼实锤", text: "失去 3 分，风险值清零。", effect: { points: -3, suspicionReset: true } },
+  { id: "r9", title: "屏幕共享事故", text: "失去 3 分。", effect: { points: -3 } },
+  { id: "r10", title: "工位突击检查", text: "业绩 -1，风险值清零。", effect: { performance: -1, suspicionReset: true } },
+  { id: "r11", title: "完美切屏", text: "+1 业绩。", effect: { performance: 1 } },
 ];
 
 const RISK_COUNTS = [
-  (players) => 4 * players,
+  (players) => 3 * players,
   (players) => 3 * players,
   (players) => 2 * players,
   () => 5,
   (players) => players,
-  () => 5,
   (players) => players,
   (players) => players,
   (players) => players,
